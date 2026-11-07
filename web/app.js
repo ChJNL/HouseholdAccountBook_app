@@ -1,5 +1,6 @@
 import { CATEGORIES, MOODS, MAX_MONEY, todayString, monthOf, daysInMonth, shiftMonth, createState, balance, goalFor, fixedFor, summarize, addAccount, adjustAccount, archiveAccount, saveTransaction, addFixedExpense, stopFixedExpense, payFixedExpense, ensureMonth, isMonth } from './core.js';
 import { STORAGE_KEY, createStore, parseBackup } from './storage.js';
+import { owns } from './compat.js';
 
 const $ = selector => document.querySelector(selector);
 const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -28,6 +29,7 @@ let toastTimer;
 let modalHandler;
 let fatal = false;
 let lastDate = todayString();
+let modalReturnFocus = null;
 
 function activeAccounts(includeId = null) { return store.state.accounts.filter(item => !item.archived || item.id === includeId); }
 function accountName(id) { return store.state.accounts.find(item => item.id === id)?.name || '알 수 없는 계좌'; }
@@ -39,6 +41,7 @@ function progress(value, red = false) { const pct = Number.isFinite(value) ? Mat
 function stat(label, value, caption, symbol, className = '') { return `<article class="card stat-card"><div class="stat-top"><span class="card-label">${label}</span><div class="icon-bubble">${icon(symbol)}</div></div><div class="stat-value ${className}">${value}</div><p class="stat-caption">${caption}</p></article>`; }
 function notify(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 4200); }
 function mutate(callback, message, redraw = true) {
+  if (store.error) throw new Error('기존 기록을 보호하기 위해 저장을 중단했습니다. 상단의 데이터 복구를 선택해 주세요.');
   store.update(callback);
   if (redraw) render();
   if (message) notify(message);
@@ -46,23 +49,37 @@ function mutate(callback, message, redraw = true) {
 function setRoute(next) { if (route === next && location.hash === `#${next}`) render(); else location.hash = next; closeSidebar(); }
 function closeSidebar() { document.body.classList.remove('sidebar-open'); $('#menu-toggle').setAttribute('aria-expanded', 'false'); $('#menu-toggle').setAttribute('aria-label', '메뉴 열기'); if (window.innerWidth < 1024) $('#sidebar').inert = true; }
 function showModal(title, body, handler, submitText = '저장하기', danger = false) {
-  if ($('#modal').open) $('#modal').close();
+  if ($('#modal').hasAttribute('open')) closeModal();
+  modalReturnFocus = document.activeElement;
   $('#modal-title').textContent = title;
   $('#modal-body').innerHTML = body;
   $('#modal-error').hidden = true;
   $('#modal-submit').textContent = submitText;
   $('#modal-submit').className = `button ${danger ? 'danger' : 'primary'}`;
   modalHandler = handler;
-  $('#modal').showModal();
+  if (typeof $('#modal').showModal === 'function') $('#modal').showModal();
+  else {
+    $('#modal').classList.add('modal-fallback');
+    $('#modal').setAttribute('open', '');
+    $('#modal-backdrop').hidden = false;
+    document.body.classList.add('modal-fallback-open');
+  }
   const firstInput = $('#modal-body').querySelector('input:not([type=radio]),select');
   if (firstInput) firstInput.focus(); else $('#modal-cancel').focus();
+}
+function closeModal() {
+  if (typeof $('#modal').close === 'function') $('#modal').close();
+  else $('#modal').removeAttribute('open');
+  $('#modal').classList.remove('modal-fallback');
+  $('#modal-backdrop').hidden = true;
+  document.body.classList.remove('modal-fallback-open');
+  if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
 }
 function confirmAction(title, body, callback, text = '확인', danger = false) { showModal(title, `<p class="modal-copy">${body}</p>`, callback, text, danger); }
 function inputField(name, title, value = '', type = 'text', extra = '', hint = '') { return `<label class="field"><span>${title}</span><input name="${name}" type="${type}" value="${escape(value)}" ${extra} required>${hint ? `<small>${hint}</small>` : ''}</label>`; }
 const moneyAttrs = `min="0" max="${MAX_MONEY}" step="1" inputmode="numeric"`;
 
 function render() {
-  if (fatal) return;
   const [title, eyebrow, description] = routes[route];
   $('#page-title').textContent = title;
   $('#page-eyebrow').textContent = eyebrow;
@@ -79,6 +96,7 @@ function render() {
   if (route === 'entry') bindEntryForm();
   if (route === 'history') bindHistoryFilters();
   if (route === 'settings') bindSettings();
+  if (store.error) showStorageNotice();
 }
 function renderDashboard() {
   const state = store.state, data = summarize(state, selectedMonth);
@@ -239,21 +257,25 @@ const actions = {
   'next-page': () => { historyPage++; $('#history-results').innerHTML = renderHistoryResults(); },
   'export': () => exportBackup(),
   'import': () => { $('#import-file').value = ''; $('#import-file').click(); },
+  'recover-data': () => showRecovery(),
+  'export-raw': () => { const raw = store.exportRaw(); if (raw === null) { notify('저장된 원본 데이터가 없습니다.'); return; } downloadText(raw, `차곡-원본-${todayString()}.json`); },
+  'reload': () => location.reload(),
 };
 
 document.addEventListener('click', event => { const target = event.target.closest('[data-action]'); if (!target || target.disabled) return; const action = actions[target.dataset.action]; if (!action) return; try { action(target.dataset.id); } catch (error) { notify(error.message); } });
 $('#book-name').addEventListener('click', () => setRoute('settings'));
-$('#modal-form').addEventListener('submit', event => { event.preventDefault(); try { modalHandler?.(event.currentTarget); $('#modal').close(); } catch (error) { $('#modal-error').textContent = error.message; $('#modal-error').hidden = false; } });
-$('#modal-close').addEventListener('click', () => $('#modal').close());
-$('#modal-cancel').addEventListener('click', () => $('#modal').close());
-$('#modal').addEventListener('click', event => { if (event.target !== $('#modal')) return; const rect = $('#modal').getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) $('#modal').close(); });
+$('#modal-form').addEventListener('submit', event => { event.preventDefault(); try { modalHandler?.(event.currentTarget); closeModal(); } catch (error) { $('#modal-error').textContent = error.message; $('#modal-error').hidden = false; } });
+$('#modal-close').addEventListener('click', closeModal);
+$('#modal-cancel').addEventListener('click', closeModal);
+$('#modal-backdrop').addEventListener('click', closeModal);
+$('#modal').addEventListener('click', event => { if (event.target !== $('#modal')) return; const rect = $('#modal').getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeModal(); });
 $('#month-picker').addEventListener('change', event => { const month = event.target.value; if (!isMonth(month) || month > monthOf(todayString())) { event.target.value = selectedMonth; return; } selectedMonth = month; historyPage = 1; render(); });
 $('#menu-toggle').addEventListener('click', () => { const open = document.body.classList.toggle('sidebar-open'); $('#sidebar').inert = !open; $('#menu-toggle').setAttribute('aria-expanded', String(open)); $('#menu-toggle').setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기'); if (open) $('#navigation a.active')?.focus(); });
 $('#sidebar-scrim').addEventListener('click', () => { closeSidebar(); $('#menu-toggle').focus(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) { closeSidebar(); $('#menu-toggle').focus(); } });
 document.querySelector('.skip-link').addEventListener('click', event => { event.preventDefault(); $('#main').focus(); });
 window.addEventListener('resize', () => { if (window.innerWidth >= 1024) { document.body.classList.remove('sidebar-open'); $('#sidebar').inert = false; $('#menu-toggle').setAttribute('aria-expanded', 'false'); } else if (!document.body.classList.contains('sidebar-open')) $('#sidebar').inert = true; });
-window.addEventListener('hashchange', () => { if (fatal) return; route = routes[location.hash.slice(1)] ? location.hash.slice(1) : 'dashboard'; closeSidebar(); render(); $('#main').focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'instant' }); });
+window.addEventListener('hashchange', () => { route = routes[location.hash.slice(1)] ? location.hash.slice(1) : 'dashboard'; closeSidebar(); try { render(); } catch (error) { showFatal(error); } $('#main').focus(); window.scrollTo(0, 0); });
 window.addEventListener('storage', event => { if (event.key !== STORAGE_KEY && event.key !== null) return; $('#notice-bar').innerHTML = '다른 탭에서 기록이 변경되었습니다. 입력 중인 내용을 확인한 뒤 새로고침해 주세요. <button id="reload-data">새로고침</button>'; $('#notice-bar').hidden = false; $('#reload-data').addEventListener('click', () => location.reload()); });
 $('#import-file').addEventListener('change', async event => {
   const file = event.target.files[0]; if (!file) return;
@@ -269,6 +291,14 @@ function showFatal(error) {
   $('#view').innerHTML = `<article class="card fatal-card"><div class="icon-bubble">${icon('shield')}</div><h2>저장된 기록을 열지 못했어요.</h2><p>기존 데이터를 보호하기 위해 자동으로 초기화하지 않았습니다. 원본을 내려받아 보관하거나 정상적인 백업 파일을 불러와 주세요.</p><p class="negative">${escape(error.message)}</p><button class="button secondary" id="download-raw">원본 데이터 내보내기</button>${button('import', '백업 파일 불러오기', 'primary')}<button class="button secondary" id="retry-load">다시 시도</button></article>`;
   $('#download-raw').addEventListener('click', () => { try { const raw = localStorage.getItem(STORAGE_KEY); if (raw === null) { notify('저장된 원본 데이터가 없습니다.'); return; } downloadText(raw, `차곡-원본-${todayString()}.json`); } catch { notify('저장소 접근이 차단되어 원본을 읽을 수 없습니다.'); } });
   $('#retry-load').addEventListener('click', () => location.reload());
+}
+function showStorageNotice() {
+  $('#notice-bar').hidden = false;
+  $('#notice-bar').innerHTML = '<strong>기존 기록을 읽지 못해 빈 화면을 표시하고 있습니다.</strong> 기존 데이터는 보존했습니다. <button type="button" data-action="recover-data">데이터 복구</button>';
+}
+function showRecovery() {
+  const detail = store.error?.message || '저장된 기록을 다시 확인하거나 백업을 불러올 수 있습니다.';
+  showModal('기존 기록 복구', `<p class="modal-copy">${escape(detail)}</p><div class="settings-actions">${button('export-raw', '원본 데이터 내보내기', 'secondary')}${button('import', '정상 백업 파일 불러오기', 'secondary')}${button('reload', '다시 시작', 'secondary')}</div><p class="data-note">원본을 자동으로 삭제하거나 초기화하지 않습니다. 기록을 읽지 못한 상태에서는 새 기록 저장을 중단합니다.</p>`, () => {}, '닫기');
 }
 async function updateOfflineStatus() {
   if (!$('#offline-status') || !('serviceWorker' in navigator) || location.hostname === 'appassets.androidplatform.net') return;
@@ -286,12 +316,31 @@ async function registerOffline() {
 }
 function initialize() {
   try {
-    store = createStore(); store.load();
-    const month = monthOf(todayString());
-    if (store.state.revision && (!Object.hasOwn(store.state.fixedMonths, month) || !Object.hasOwn(store.state.goals, month))) store.update(() => {});
-    render(); closeSidebar(); registerOffline();
+    store = createStore();
+    render(); closeSidebar();
+    window.ChagokStartup?.ready();
+    // 첫 화면과 메뉴를 먼저 준비한 다음 저장된 기록을 복원한다.
+    setTimeout(() => {
+      try {
+        store.load();
+        const month = monthOf(todayString());
+        if (!store.error && store.hasSavedData && (!owns(store.state.fixedMonths, month) || !owns(store.state.goals, month))) store.update(() => {});
+        render();
+      } catch (error) { showFatal(error); }
+    }, 0);
+    registerOffline();
   } catch (error) { showFatal(error); }
 }
+document.addEventListener('keydown', event => {
+  if (!$('#modal').classList.contains('modal-fallback') || !$('#modal').hasAttribute('open')) return;
+  if (event.key === 'Escape') { event.preventDefault(); closeModal(); }
+  if (event.key !== 'Tab') return;
+  const focusable = Array.from($('#modal').querySelectorAll('button:not([disabled]),input:not([type=hidden]),select,a[href]')).filter(element => element.getClientRects().length);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || fatal || lastDate === todayString()) return;
   const previous = lastDate; lastDate = todayString();

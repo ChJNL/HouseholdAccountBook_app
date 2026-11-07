@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#173e35">
+  <meta name="theme-color" content="#E6BD4B">
   <meta name="description" content="기기에만 기록하는 나의 가계부. 오늘의 예산과 소비를 차분하게 관리하세요.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>차곡 · 나의 가계부</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
-  <script src="./app.js" type="module"></script>
+  <script src="./boot.js" defer></script>
+  <script src="./app.bundle.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로 이동</a>
@@ -47,7 +48,7 @@
       <div class="sidebar-bottom">
         <div class="privacy-note"><svg class="icon"><use href="#i-shield"/></svg><strong>내 기록은 내 기기에</strong><p>회원가입도, 금융 연동도 없이<br>나만의 속도로 기록하세요.</p></div>
         <button class="sidebar-settings" data-action="settings"><svg class="icon"><use href="#i-settings"/></svg>설정 및 데이터 관리</button>
-        <span class="sidebar-foot">작은 기록이 만드는 좋은 습관</span>
+        <span class="sidebar-foot">작은 기록이 만드는 좋은 습관 · 1.0.1</span>
       </div>
     </aside>
     <div class="workspace">
@@ -58,13 +59,14 @@
       <div class="notice-bar" id="notice-bar" hidden role="status"></div>
       <main id="main" tabindex="-1">
         <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">나의 하루, 나의 예산</p><h1 id="page-title">메인</h1><p class="page-description" id="page-description"></p></div><label class="month-control"><svg class="icon"><use href="#i-calendar"/></svg><span class="sr-only">조회 월</span><input type="month" id="month-picker" min="2000-01" aria-label="조회 월"></label></div>
-        <div id="view" aria-live="off"></div>
+        <div id="view" aria-live="off"><article class="card startup-card"><p class="eyebrow">나의 첫 가계부</p><h2>기록 없이 바로 시작하세요.</h2><p id="startup-message">가계부 화면을 준비하고 있습니다. 계좌나 백업 파일이 없어도 시작할 수 있습니다.</p></article></div>
         <footer class="page-footer"><span>차곡 · 오늘의 기록이 내일의 여유로</span><span id="save-status">아직 저장된 기록이 없습니다</span></footer>
       </main>
     </div>
   </div>
   <dialog id="modal" aria-labelledby="modal-title"><form id="modal-form"><div class="modal-heading"><h2 id="modal-title"></h2><button type="button" class="icon-button" id="modal-close" aria-label="닫기"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="modal-body"></div><p class="form-error" id="modal-error" role="alert" hidden></p><div class="modal-actions"><button type="button" class="button secondary" id="modal-cancel">취소</button><button class="button primary" id="modal-submit" type="submit">저장하기</button></div></form></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
+  <div class="modal-backdrop" id="modal-backdrop" hidden></div>
   <input type="file" id="import-file" accept="application/json,.json" hidden>
   <noscript>가계부를 사용하려면 브라우저의 JavaScript를 활성화해 주세요.</noscript>
 </body>

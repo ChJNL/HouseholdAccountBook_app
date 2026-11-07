@@ -17,6 +17,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import android.view.WindowInsets
+import android.widget.FrameLayout
+import android.window.OnBackInvokedDispatcher
 import androidx.webkit.WebViewAssetLoader
 import java.io.ByteArrayInputStream
 
@@ -31,9 +33,13 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         webView = WebView(this)
-        webView.setBackgroundColor(Color.rgb(246, 247, 244))
-        setContentView(webView)
-        webView.setOnApplyWindowInsetsListener { view, insets ->
+        webView.setBackgroundColor(Color.rgb(250, 248, 241))
+        val container = FrameLayout(this)
+        container.setBackgroundColor(Color.rgb(250, 248, 241))
+        container.addView(webView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        setContentView(container)
+        // 시스템 여백은 WebView 바깥에 적용하여 표시 위치와 터치 좌표를 일치시킨다.
+        container.setOnApplyWindowInsetsListener { view, insets ->
             if (Build.VERSION.SDK_INT >= 30) {
                 val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
                 view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
@@ -46,6 +52,8 @@ class MainActivity : Activity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            useWideViewPort = true
+            loadWithOverviewMode = true
             allowFileAccess = false
             allowContentAccess = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
@@ -59,7 +67,12 @@ class MainActivity : Activity() {
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
                 if (!isLocal(request.url)) return blockedResponse()
-                return loader.shouldInterceptRequest(request.url) ?: blockedResponse()
+                val response = loader.shouldInterceptRequest(request.url) ?: return blockedResponse()
+                when {
+                    request.url.path.orEmpty().endsWith(".js") -> response.mimeType = "text/javascript"
+                    request.url.path.orEmpty().endsWith(".css") -> response.mimeType = "text/css"
+                }
+                return response
             }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = !isLocal(request.url)
         }
@@ -83,6 +96,9 @@ class MainActivity : Activity() {
         webView.addJavascriptInterface(BackupBridge(), "AndroidFiles")
         if (savedInstanceState != null) webView.restoreState(savedInstanceState)
         if (webView.url == null) webView.loadUrl("$origin/assets/index.html")
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) { handleBack() }
+        }
     }
 
     private fun isLocal(uri: Uri): Boolean = uri.scheme == "https" && uri.host == "appassets.androidplatform.net" && uri.port == -1 && uri.path.orEmpty().startsWith("/assets/")
@@ -136,8 +152,9 @@ class MainActivity : Activity() {
 
     override fun onSaveInstanceState(outState: Bundle) { webView.saveState(outState); super.onSaveInstanceState(outState) }
     @Deprecated("웹 화면 뒤로 이동 처리")
-    override fun onBackPressed() {
-        webView.evaluateJavascript("(() => { const modal = document.querySelector('dialog[open]'); if (modal) { modal.close(); return 'handled'; } if (document.body.classList.contains('sidebar-open')) { document.querySelector('#menu-toggle').click(); return 'handled'; } if (location.hash && location.hash !== '#dashboard') { location.hash='dashboard'; return 'handled'; } return 'exit'; })()") { result ->
+    override fun onBackPressed() { handleBack() }
+    private fun handleBack() {
+        webView.evaluateJavascript("(function () { var modal = document.querySelector('dialog[open]'); if (modal) { document.getElementById('modal-close').click(); return 'handled'; } if (document.body.classList.contains('sidebar-open')) { document.getElementById('menu-toggle').click(); return 'handled'; } if (location.hash && location.hash !== '#dashboard') { location.hash='dashboard'; return 'handled'; } return 'exit'; }())") { result ->
             if (result == "\"exit\"") finish()
         }
     }

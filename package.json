@@ -1,6 +1,6 @@
 {
   "name": "household-account-book",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,5 +10,10 @@
     "check": "node --check web/app.js && node --check web/core.js && node --check web/storage.js && node --check web/sw.js",
     "android:prepare": "node scripts/prepare-android.mjs"
   },
-  "engines": { "node": ">=20.11" }
+  "engines": {
+    "node": ">=20.11"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
 }

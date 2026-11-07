@@ -1,8 +1,9 @@
+import { owns, makeId } from './compat.js';
 export const SCHEMA_VERSION = 1;
 export const CATEGORIES = ['식비', '카페·간식', '생활·쇼핑', '교통', '주거·통신', '건강', '문화·여가', '교육', '기타'];
 export const MOODS = ['가치소비', '어쩔 수 없음', '낭비·후회'];
 export const MAX_MONEY = 1_000_000_000_000;
-export const uid = () => crypto.randomUUID();
+export const uid = makeId;
 export function todayString(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -34,16 +35,17 @@ export function createState(date = todayString()) {
   return { schemaVersion: SCHEMA_VERSION, revision: 0, updatedAt: new Date().toISOString(), settings: { bookName: '나의 가계부', primaryAccountId: null }, goals: { [monthOf(date)]: { income: 0, savings: 0 } }, accounts: [], transactions: [], fixedExpenses: [], fixedMonths: { [monthOf(date)]: [] } };
 }
 export function goalFor(state, month) {
-  const key = Object.keys(state.goals).filter(key => key <= month).sort().at(-1);
+  const keys = Object.keys(state.goals).filter(key => key <= month).sort();
+  const key = keys[keys.length - 1];
   return key ? state.goals[key] : { income: 0, savings: 0 };
 }
 export function fixedFor(state, month) {
-  if (Object.hasOwn(state.fixedMonths, month)) return state.fixedMonths[month];
+  if (owns(state.fixedMonths, month)) return state.fixedMonths[month];
   return state.fixedExpenses.filter(item => item.startMonth <= month && (item.active || (item.endMonth && month <= item.endMonth))).map(item => ({ id: `${item.id}:${month}`, fixedId: item.id, name: item.name, amount: item.amount, day: item.day, accountId: item.accountId }));
 }
 export function ensureMonth(state, month) {
-  if (!Object.hasOwn(state.goals, month)) state.goals[month] = { ...goalFor(state, month) };
-  if (!Object.hasOwn(state.fixedMonths, month)) state.fixedMonths[month] = fixedFor(state, month).map(item => ({ ...item }));
+  if (!owns(state.goals, month)) state.goals[month] = { ...goalFor(state, month) };
+  if (!owns(state.fixedMonths, month)) state.fixedMonths[month] = fixedFor(state, month).map(item => ({ ...item }));
 }
 export function validateState(state) {
   requireValue(state && typeof state === 'object' && state.schemaVersion === SCHEMA_VERSION, '지원하지 않는 백업 형식입니다.');

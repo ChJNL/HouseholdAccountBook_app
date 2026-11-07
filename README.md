@@ -4,13 +4,14 @@
 
 [원본 기획서](https://app.notion.com/p/3fdf445d30e38049a01ed95b5e047551) · [개발 기준](docs/DEVELOPMENT.md) · [수동 확인 안내](docs/MANUAL_REVIEW.md)
 
-현재 작업에서 생성한 파일은 로컬 `artifacts/` 폴더에 있습니다. `chagok-preview.apk`는 설치 가능한 미리보기 앱이며, `chagok-release-unsigned.apk`는 정식 서명 전 파일입니다. `chagok-web.zip`에는 웹 배포용 `dist/` 폴더가 들어 있습니다. 생성 파일은 Git에서 제외하며 코드를 수정한 뒤에는 다시 빌드해야 합니다.
+현재 작업에서 생성한 파일은 로컬 `artifacts/` 폴더에 있습니다. 최신 골드 버전은 `chagok-preview-1.0.1-gold.apk`이며 기존 미리보기 앱 위에 업데이트하여 설치합니다. 정식 서명 전 파일은 `chagok-release-1.0.1-gold-unsigned.apk`입니다. `chagok-web-1.0.1-gold.zip`에는 웹 배포용 `dist/` 폴더가 들어 있습니다. 생성 파일은 Git에서 제외하며 코드를 수정한 뒤에는 다시 빌드해야 합니다.
 
 ## 시작하기
 
-Node.js 20.11 이상을 사용합니다. 별도로 설치할 웹 패키지는 없습니다.
+Node.js 20.11 이상을 사용합니다. 최초 한 번 개발용 빌드 도구를 설치합니다. 앱 실행 중에는 외부 패키지를 내려받지 않습니다.
 
 ```sh
+npm ci
 npm run dev
 ```
 
@@ -78,7 +79,7 @@ cd android
 .\gradlew.bat :app:assembleDebug
 ```
 
-Gradle이 빌드 전에 `web/` 내용을 앱에 자동으로 포함합니다. `local.properties`에는 사용하는 환경의 SDK 경로를 설정합니다. Android Studio가 SDK를 선택하면 이 파일을 생성합니다.
+Gradle이 빌드 전에 웹 코드를 호환 JavaScript 파일로 묶고 `dist/` 내용을 앱에 자동으로 포함합니다. `local.properties`에는 사용하는 환경의 SDK 경로를 설정합니다. Android Studio가 SDK를 선택하면 이 파일을 생성합니다.
 
 - 기본 미리보기 APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 - 미리보기 앱 ID: `io.chagok.accountbook.dev`

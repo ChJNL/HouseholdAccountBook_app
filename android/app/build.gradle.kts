@@ -14,8 +14,8 @@ android {
         applicationId = "io.chagok.accountbook"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
         testInstrumentationRunner = "io.chagok.accountbook.SmokeInstrumentation"
     }
     buildTypes {
@@ -32,8 +32,18 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 
 dependencies { implementation("androidx.webkit:webkit:1.14.0") }
 
+val buildWebAssets by tasks.registering(Exec::class) {
+    workingDir("../..")
+    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "npm.cmd" else "npm", "run", "build")
+    inputs.dir("../../web")
+    inputs.file("../../scripts/build.mjs")
+    inputs.file("../../package.json")
+    inputs.file("../../package-lock.json")
+    outputs.dir("../../dist")
+}
 val syncWebAssets by tasks.registering(Sync::class) {
-    from("../../web")
+    dependsOn(buildWebAssets)
+    from("../../dist")
     into("src/main/assets")
 }
 tasks.named("preBuild").configure { dependsOn(syncWebAssets) }
