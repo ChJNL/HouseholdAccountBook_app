@@ -1,0 +1,14 @@
+{
+  "name": "household-account-book",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.js",
+    "build": "node scripts/build.mjs",
+    "check": "node --check web/app.js && node --check web/core.js && node --check web/storage.js && node --check web/sw.js",
+    "android:prepare": "node scripts/prepare-android.mjs"
+  },
+  "engines": { "node": ">=20.11" }
+}

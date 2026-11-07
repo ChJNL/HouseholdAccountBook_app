@@ -1,0 +1,13 @@
+{
+  "name": "차곡 · 나의 가계부",
+  "short_name": "차곡",
+  "description": "로그인 없이 기기에 기록하는 나만의 가계부",
+  "lang": "ko",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#173e35",
+  "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
