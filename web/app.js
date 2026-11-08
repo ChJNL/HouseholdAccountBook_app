@@ -18,7 +18,7 @@ const routes = {
   analytics: ['지출 분석', '숫자로 알아보는 나의 습관', '지난달과 비교하고, 자주 쓰는 곳을 확인해 보세요.'],
   accounts: ['내 계좌 모음', '흩어진 자산을 한곳에', '금융 연동 없이 내가 직접 관리하는 계좌'],
   fixed: ['고정비 스케줄러', '미리 준비하는 여유', '매달 나가는 돈을 기억하고 남은 예산을 관리하세요.'],
-  settings: ['설정 및 데이터 관리', '나에게 맞는 가계부', '목표를 정하고 소중한 기록을 백업하세요.'],
+  settings: ['설정 및 데이터 관리', '나에게 맞는 가계부', '목표를 정하고 이 기기에 기록을 쌓아 보세요.'],
 };
 let store;
 let selectedMonth = monthOf(todayString());
@@ -41,12 +41,22 @@ function progress(value, red = false) { const pct = Number.isFinite(value) ? Mat
 function stat(label, value, caption, symbol, className = '') { return `<article class="card stat-card"><div class="stat-top"><span class="card-label">${label}</span><div class="icon-bubble">${icon(symbol)}</div></div><div class="stat-value ${className}">${value}</div><p class="stat-caption">${caption}</p></article>`; }
 function notify(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 4200); }
 function mutate(callback, message, redraw = true) {
-  if (store.error) throw new Error('기존 기록을 보호하기 위해 저장을 중단했습니다. 상단의 데이터 복구를 선택해 주세요.');
   store.update(callback);
+  fatal = false;
+  if (!store.error) $('#notice-bar').hidden = true;
   if (redraw) render();
   if (message) notify(message);
 }
-function setRoute(next) { if (route === next && location.hash === `#${next}`) render(); else location.hash = next; closeSidebar(); }
+function setRoute(next) {
+  if (!owns(routes, next)) return;
+  route = next;
+  closeSidebar();
+  // WebView의 주소 조각 이동 이벤트에 의존하지 않고 선택한 화면을 즉시 표시한다.
+  render();
+  try { history.replaceState(null, '', `#${next}`); } catch { /* 주소 변경 실패가 화면 이동을 막지 않는다. */ }
+  $('#main').focus();
+  window.scrollTo(0, 0);
+}
 function closeSidebar() { document.body.classList.remove('sidebar-open'); $('#menu-toggle').setAttribute('aria-expanded', 'false'); $('#menu-toggle').setAttribute('aria-label', '메뉴 열기'); if (window.innerWidth < 1024) $('#sidebar').inert = true; }
 function showModal(title, body, handler, submitText = '저장하기', danger = false) {
   if ($('#modal').hasAttribute('open')) closeModal();
@@ -96,7 +106,7 @@ function render() {
   if (route === 'entry') bindEntryForm();
   if (route === 'history') bindHistoryFilters();
   if (route === 'settings') bindSettings();
-  if (store.error) showStorageNotice();
+  if (store.error) showStorageIssue();
 }
 function renderDashboard() {
   const state = store.state, data = summarize(state, selectedMonth);
@@ -257,12 +267,18 @@ const actions = {
   'next-page': () => { historyPage++; $('#history-results').innerHTML = renderHistoryResults(); },
   'export': () => exportBackup(),
   'import': () => { $('#import-file').value = ''; $('#import-file').click(); },
-  'recover-data': () => showRecovery(),
-  'export-raw': () => { const raw = store.exportRaw(); if (raw === null) { notify('저장된 원본 데이터가 없습니다.'); return; } downloadText(raw, `차곡-원본-${todayString()}.json`); },
   'reload': () => location.reload(),
 };
 
 document.addEventListener('click', event => { const target = event.target.closest('[data-action]'); if (!target || target.disabled) return; const action = actions[target.dataset.action]; if (!action) return; try { action(target.dataset.id); } catch (error) { notify(error.message); } });
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[href^="#"]');
+  if (!link) return;
+  const next = link.getAttribute('href').slice(1);
+  if (!owns(routes, next)) return;
+  event.preventDefault();
+  try { setRoute(next); } catch (error) { showFatal(error); }
+});
 $('#book-name').addEventListener('click', () => setRoute('settings'));
 $('#modal-form').addEventListener('submit', event => { event.preventDefault(); try { modalHandler?.(event.currentTarget); closeModal(); } catch (error) { $('#modal-error').textContent = error.message; $('#modal-error').hidden = false; } });
 $('#modal-close').addEventListener('click', closeModal);
@@ -288,17 +304,11 @@ $('#import-file').addEventListener('change', async event => {
 
 function showFatal(error) {
   fatal = true;
-  $('#view').innerHTML = `<article class="card fatal-card"><div class="icon-bubble">${icon('shield')}</div><h2>저장된 기록을 열지 못했어요.</h2><p>기존 데이터를 보호하기 위해 자동으로 초기화하지 않았습니다. 원본을 내려받아 보관하거나 정상적인 백업 파일을 불러와 주세요.</p><p class="negative">${escape(error.message)}</p><button class="button secondary" id="download-raw">원본 데이터 내보내기</button>${button('import', '백업 파일 불러오기', 'primary')}<button class="button secondary" id="retry-load">다시 시도</button></article>`;
-  $('#download-raw').addEventListener('click', () => { try { const raw = localStorage.getItem(STORAGE_KEY); if (raw === null) { notify('저장된 원본 데이터가 없습니다.'); return; } downloadText(raw, `차곡-원본-${todayString()}.json`); } catch { notify('저장소 접근이 차단되어 원본을 읽을 수 없습니다.'); } });
-  $('#retry-load').addEventListener('click', () => location.reload());
+  $('#view').innerHTML = `<article class="card fatal-card"><div class="icon-bubble">${icon('shield')}</div><h2>선택한 화면을 표시하지 못했어요.</h2><p>다른 메뉴를 선택하거나 앱을 다시 시작해 주세요. 시작할 때 백업 파일은 필요하지 않습니다.</p><p class="negative">${escape(error.message)}</p>${button('reload', '다시 시작', 'secondary')}</article>`;
 }
-function showStorageNotice() {
+function showStorageIssue() {
   $('#notice-bar').hidden = false;
-  $('#notice-bar').innerHTML = '<strong>기존 기록을 읽지 못해 빈 화면을 표시하고 있습니다.</strong> 기존 데이터는 보존했습니다. <button type="button" data-action="recover-data">데이터 복구</button>';
-}
-function showRecovery() {
-  const detail = store.error?.message || '저장된 기록을 다시 확인하거나 백업을 불러올 수 있습니다.';
-  showModal('기존 기록 복구', `<p class="modal-copy">${escape(detail)}</p><div class="settings-actions">${button('export-raw', '원본 데이터 내보내기', 'secondary')}${button('import', '정상 백업 파일 불러오기', 'secondary')}${button('reload', '다시 시작', 'secondary')}</div><p class="data-note">원본을 자동으로 삭제하거나 초기화하지 않습니다. 기록을 읽지 못한 상태에서는 새 기록 저장을 중단합니다.</p>`, () => {}, '닫기');
+  $('#notice-bar').innerHTML = `<strong>기기 저장소를 확인해 주세요.</strong> ${escape(store.error.message)} ${button('reload', '다시 시작', 'secondary small')}`;
 }
 async function updateOfflineStatus() {
   if (!$('#offline-status') || !('serviceWorker' in navigator) || location.hostname === 'appassets.androidplatform.net') return;
@@ -317,17 +327,12 @@ async function registerOffline() {
 function initialize() {
   try {
     store = createStore();
-    render(); closeSidebar();
+    // 이전 테스트 기록과 분리한 현재 가계부만 연다. 첫 사용은 계좌 등록 화면이다.
+    store.load();
+    ensureMonth(store.state, monthOf(todayString()));
+    if (!store.hasSavedData) route = 'accounts';
+    setRoute(route);
     window.ChagokStartup?.ready();
-    // 첫 화면과 메뉴를 먼저 준비한 다음 저장된 기록을 복원한다.
-    setTimeout(() => {
-      try {
-        store.load();
-        const month = monthOf(todayString());
-        if (!store.error && store.hasSavedData && (!owns(store.state.fixedMonths, month) || !owns(store.state.goals, month))) store.update(() => {});
-        render();
-      } catch (error) { showFatal(error); }
-    }, 0);
     registerOffline();
   } catch (error) { showFatal(error); }
 }

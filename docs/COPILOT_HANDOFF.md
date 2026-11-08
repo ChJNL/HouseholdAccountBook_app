@@ -2,6 +2,17 @@
 
 작성일: 2026-11-08
 
+### 최신 변경: 1.0.2
+
+사용자가 1.0.1을 설치한 뒤 색상과 버튼 동작은 수정되었다고 보고했다. 각 메뉴의 기능에는 문제가 남아 있어, 백업·복구 없이 새 가계부로 시작하는 변경을 승인했다. 아래의 1.0.1 기록은 이력이며 현재 정책은 다음 항목을 우선한다.
+
+- 이전 테스트 키 `household-book:v1`은 읽거나 자동 복원하지 않는다. 새 키는 `household-book:fresh:v1`이며 이후 업데이트에서도 유지한다.
+- 첫 실행은 빈 계좌 등록 화면에서 시작한다. 이후 새로 입력한 기록은 재실행 시 유지한다.
+- 초기 진입의 복구 안내와 기존 기록 오류에 따른 전체 저장 차단을 제거한다. 설정의 JSON 파일 기능은 사용자가 선택할 때만 동작한다.
+- 각 메뉴를 누르면 화면을 직접 전환한다. 주소 조각 변경 이벤트에만 의존하지 않는다.
+- 현재 버전은 `1.0.2`, Android 버전 코드는 3이다. 설치용 파일 이름은 `chagok-preview-1.0.2-fresh.apk`다.
+- 자동 테스트와 기기 검증은 계속 실행하지 않는다. 수정본의 실기기 기능 해결 여부는 사용자 확인 대상이다.
+
 ## 1. 이 문서로 이어서 할 작업
 
 사용자는 APK를 업데이트할 때마다 USB로 파일을 옮기는 과정을 번거롭게 느낀다. 현재 앱 개발 내용을 이어받고, USB 없이 APK를 업데이트할 수 있는 작업 계획을 먼저 제시한다.
@@ -33,8 +44,8 @@
 | 로컬 작업 폴더 | `C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app` |
 | 작성 시 브랜치 | `main` |
 | 문서 작성 전 기준 커밋 | `8d66507` / `Update 1.0.1` |
-| 웹 패키지 버전 | `1.0.1` |
-| Android 버전 | `versionName = 1.0.1`, `versionCode = 2` |
+| 웹 패키지 버전 | `1.0.2` |
+| Android 버전 | `versionName = 1.0.2`, `versionCode = 3` |
 | 미리보기 앱 ID | `io.chagok.accountbook.dev` |
 | 정식 앱 ID | `io.chagok.accountbook` |
 | 사용자 확인 기기 | 레노버 태블릿. 정확한 모델·Android·WebView 버전은 확인되지 않았다. |
@@ -91,7 +102,7 @@
 
 ### 확인한 범위
 
-`1.0.1` 웹 파일 생성과 Android 미리보기·서명 전 릴리스 APK 빌드는 성공했다. 수정본의 레노버 태블릿 실행 결과는 아직 전달받지 못했다. 실제 태블릿 오류의 최초 원인은 확정되지 않았으며, 위 변경을 실기기에서 확인한 해결 결과로 표현하면 안 된다.
+`1.0.1`과 `1.0.2`의 웹 파일 생성 및 Android 미리보기·서명 전 릴리스 APK 빌드는 성공했다. 사용자는 1.0.1의 색상과 버튼 동작이 수정되었다고 보고했지만 메뉴별 기능에는 문제가 남아 있다고 알렸다. 1.0.2의 실기기 결과는 아직 확인하지 않았다. 실제 태블릿 오류의 최초 원인은 확정되지 않았으며, 빌드 성공을 모든 기능의 실기기 해결 확인으로 표현하면 안 된다.
 
 사용자는 참고 이미지를 처음 전달했다고 설명했다. 이 대화에서 확인 가능한 내용에는 `!image.png` 문구만 남아 있어 실제 이미지를 확인하지 못했다. 현재 디자인이 그 이미지와 일치한다고 주장하지 않는다.
 
@@ -104,7 +115,7 @@
 
 ## 6. 데이터와 계산에서 유지할 기준
 
-- 저장 키는 `household-book:v1`이며 데이터 형식 버전은 1이다. 앱 버전 변경만으로 이 키를 바꾸지 않는다.
+- 저장 키는 `household-book:fresh:v1`이며 데이터 형식 버전은 1이다. 1.0.2의 승인된 새 시작 이후에는 앱 버전 변경만으로 이 키를 바꾸지 않는다.
 - 웹과 APK는 각각의 저장소를 사용한다. 기기 간 자동 동기화는 없고 JSON 백업으로 이동한다.
 - Android 로컬 콘텐츠의 출처는 `https://appassets.androidplatform.net/assets/`다. 출처 변경은 기존 기록 접근에 영향을 줄 수 있다.
 - 계좌 잔액은 시작 잔액과 거래 합계로 계산한다. 수정·삭제 때 잔액을 중복 차감하지 않는다.
@@ -158,14 +169,14 @@ OneDrive 경로에서 Kotlin 빌드 캐시 파일 잠금 오류가 있었다. �
 
 | 파일 | 용도 |
 | --- | --- |
-| `chagok-preview-1.0.1-gold.apk` | 사용자에게 전달한 설치용 미리보기 APK. |
-| `chagok-release-1.0.1-gold-unsigned.apk` | 정식 서명 전 릴리스 APK. |
-| `chagok-web-1.0.1-gold.zip` | `dist/` 폴더를 포함한 웹 배포 압축 파일. |
+| `chagok-preview-1.0.2-fresh.apk` | 새 가계부로 시작하는 설치용 미리보기 APK. |
+| `chagok-release-1.0.2-fresh-unsigned.apk` | 정식 서명 전 릴리스 APK. |
+| `chagok-web-1.0.2-fresh.zip` | `dist/` 폴더를 포함한 웹 배포 압축 파일. |
 
 설치용 APK의 전체 경로는 다음과 같다.
 
 ```text
-C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app\artifacts\chagok-preview-1.0.1-gold.apk
+C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app\artifacts\chagok-preview-1.0.2-fresh.apk
 ```
 
 `chagok-preview.apk`, `chagok-release-unsigned.apk`, `chagok-web.zip` 이름의 사본도 최신 생성 파일로 갱신했다.

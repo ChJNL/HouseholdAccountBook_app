@@ -1,6 +1,8 @@
 import { createState, validateState, ensureMonth, monthOf, todayString } from './core.js';
 import { cloneData } from './compat.js';
-export const STORAGE_KEY = 'household-book:v1';
+// 1.0.2에서 승인한 새 가계부 공간이다. 이후 앱 업데이트에서도 이 키를 유지한다.
+// 이전 테스트 공간 household-book:v1은 읽거나 자동 복원하지 않는다.
+export const STORAGE_KEY = 'household-book:fresh:v1';
 export const BACKUP_FORMAT = 'household-account-book';
 export function createStore(providedStorage) {
   // 저장소를 읽기 전에도 빈 가계부 화면을 표시할 수 있다.
@@ -20,14 +22,13 @@ export function createStore(providedStorage) {
       state = raw === null ? createState() : validateState(JSON.parse(raw));
     } catch (error) {
       state = createState();
-      loadError = new Error(`저장된 기록을 읽지 못했습니다. 원본을 보존하고 빈 화면을 표시합니다. ${error.message}`);
+      loadError = new Error(`현재 가계부 기록을 읽지 못했습니다. ${error.message}`);
     }
     loaded = true;
     return state;
   }
-  function commit(next, restoring = false) {
+  function commit(next) {
     if (!loaded) throw new Error('기기 저장소를 준비하고 있습니다. 잠시 후 다시 눌러 주세요.');
-    if (loadError && !restoring) throw new Error('기존 기록을 보호하기 위해 저장을 중단했습니다. 상단의 데이터 복구를 선택해 주세요.');
     let current;
     try { current = storage().getItem(STORAGE_KEY); }
     catch { throw new Error('기기 저장소에 접근할 수 없습니다. 브라우저 또는 앱의 저장 설정을 확인해 주세요.'); }
@@ -47,10 +48,9 @@ export function createStore(providedStorage) {
     get error() { return loadError; },
     get hasSavedData() { return hasSavedData; },
     update(callback) { const next = cloneData(state); ensureMonth(next, monthOf(todayString())); callback(next); return commit(next); },
-    replace(data) { validateState(data); return commit(cloneData(data), true); },
-    exportRaw() { return storage().getItem(STORAGE_KEY); },
+    replace(data) { validateState(data); return commit(cloneData(data)); },
     export() {
-      if (loadError) throw new Error('정상 백업으로 내보낼 수 없습니다. 데이터 복구에서 원본 데이터를 내보내 주세요.');
+      if (loadError) throw new Error('현재 가계부 기록을 읽지 못해 파일로 내보낼 수 없습니다.');
       return JSON.stringify({ format: BACKUP_FORMAT, exportedAt: new Date().toISOString(), data: state }, null, 2);
     },
   };
