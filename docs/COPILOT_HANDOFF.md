@@ -2,7 +2,19 @@
 
 작성일: 2026-11-08
 
-### 최신 변경: 1.0.3
+### 최신 변경: 1.0.4
+
+계좌 등록을 사용 목적 대신 은행 이름 입력 방식으로 변경했다. 새 계좌에 `bankName`을 저장하고 호환용 `name`도 같은 값으로 유지한다. 기존 계좌 이름은 임의로 바꾸지 않으며 은행 이름 수정 안내를 표시한다. 같은 은행은 순서 번호로 구분한다.
+
+메뉴에 사용법 페이지와 첫 사용 화면의 안내 버튼을 추가했다. 은행 등록, 목표, 고정비, 수입·지출, 조회·수정, 분석 순서로 설명하고 해당 화면으로 바로 이동할 수 있다. 골드 디자인과 `household-book:fresh:v1` 저장 공간을 유지한다.
+
+현재 버전은 `1.0.4`, Android 버전 코드는 5다. 설치 파일은 `chagok-v1.0.4.apk`다. [Copilot용 릴리스 갱신 명령어](COPILOT_RELEASE_COMMANDS.md)와 [릴리스 설명](RELEASE_NOTES_1.0.4.md)을 제공한다. 실제 원격 게시와 기기 검증은 실행하지 않는다.
+
+사용자는 기존 앱을 삭제한 뒤 재설치하는 작업 스텝 5를 취소했다. 앱 삭제·재설치 기능이나 스크립트를 후속 작업으로 추가하지 않는다. 기존 앱을 삭제하지 않고 같은 앱 ID와 서명을 유지한 APK를 업데이트 설치하는 방식을 유지한다.
+
+작업 스텝 1~4와 6은 작성·빌드를 완료했다. 1.0.4 웹 파일과 Android 미리보기·서명 전 릴리스 APK 빌드는 성공했다. 작업 스텝 5는 사용자 요청으로 변경/삭제 상태다. 자동 테스트, 실기기 설치·삭제, 기기 검증과 원격 릴리스 게시는 실행하지 않았다.
+
+### 이전 변경: 1.0.3
 
 사용자가 각 화면에서 `intermediate value ... is not a function` 오류를 보고했다. 코드에서 화면 렌더링 함수 목록 객체 자체를 호출하는 잘못된 구현을 확인했다. 원인은 백업 처리가 아니었다. `renderers[route]`로 해당 화면 함수를 선택하고 함수 여부를 확인한 다음 호출하도록 수정했다.
 
@@ -50,8 +62,8 @@
 | 로컬 작업 폴더 | `C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app` |
 | 작성 시 브랜치 | `main` |
 | 문서 작성 전 기준 커밋 | `8d66507` / `Update 1.0.1` |
-| 웹 패키지 버전 | `1.0.3` |
-| Android 버전 | `versionName = 1.0.3`, `versionCode = 4` |
+| 웹 패키지 버전 | `1.0.4` |
+| Android 버전 | `versionName = 1.0.4`, `versionCode = 5` |
 | 미리보기 앱 ID | `io.chagok.accountbook.dev` |
 | 정식 앱 ID | `io.chagok.accountbook` |
 | 사용자 확인 기기 | 레노버 태블릿. 정확한 모델·Android·WebView 버전은 확인되지 않았다. |
@@ -175,14 +187,14 @@ OneDrive 경로에서 Kotlin 빌드 캐시 파일 잠금 오류가 있었다. �
 
 | 파일 | 용도 |
 | --- | --- |
-| `chagok-v1.0.3.apk` | 화면 호출 오류를 수정한 설치용 미리보기 APK. |
-| `chagok-release-1.0.3-unsigned.apk` | 정식 서명 전 릴리스 APK. |
-| `chagok-web-1.0.3.zip` | `dist/` 폴더를 포함한 웹 배포 압축 파일. |
+| `chagok-v1.0.4.apk` | 은행 이름 입력과 사용법 페이지를 추가한 설치용 미리보기 APK. |
+| `chagok-release-1.0.4-unsigned.apk` | 정식 서명 전 릴리스 APK. |
+| `chagok-web-1.0.4.zip` | `dist/` 폴더를 포함한 웹 배포 압축 파일. |
 
 설치용 APK의 전체 경로는 다음과 같다.
 
 ```text
-C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app\artifacts\chagok-v1.0.3.apk
+C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app\artifacts\chagok-v1.0.4.apk
 ```
 
 `chagok-preview.apk`, `chagok-release-unsigned.apk`, `chagok-web.zip` 이름의 사본도 최신 생성 파일로 갱신했다.

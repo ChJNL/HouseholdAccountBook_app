@@ -59,7 +59,7 @@ export function validateState(state) {
   unique(state.accounts, '계좌'); unique(state.transactions, '거래'); unique(state.fixedExpenses, '고정비');
   const accounts = new Set(state.accounts.map(item => item.id));
   requireValue(state.settings.primaryAccountId === null || accounts.has(state.settings.primaryAccountId), '대표 계좌를 찾을 수 없습니다.');
-  for (const item of state.accounts) { label(item.name, '계좌 이름', 24); money(item.openingBalance, '시작 잔액', true); requireValue(typeof item.archived === 'boolean', '계좌 보관 상태가 올바르지 않습니다.'); }
+  for (const item of state.accounts) { label(item.name, '등록 이름', 24); if (item.bankName !== undefined) label(item.bankName, '은행 이름', 24); money(item.openingBalance, '시작 잔액', true); requireValue(typeof item.archived === 'boolean', '계좌 보관 상태가 올바르지 않습니다.'); }
   for (const [month, goal] of Object.entries(state.goals)) { requireValue(isMonth(month), '예산 월이 올바르지 않습니다.'); money(goal.income, '월 수입'); money(goal.savings, '목표 저축액'); }
   const occurrenceIds = new Map();
   const fixedIds = new Set(state.fixedExpenses.map(item => item.id));
@@ -96,17 +96,21 @@ export function balance(state, accountId) {
   const account = state.accounts.find(item => item.id === accountId);
   return (account?.openingBalance || 0) + state.transactions.filter(item => item.accountId === accountId).reduce((sum, item) => sum + (item.type === 'expense' ? -item.amount : item.amount), 0);
 }
-export function addAccount(state, { name, openingBalance }) {
-  const account = { id: uid(), name: name.trim(), openingBalance: money(openingBalance, '잔액', true), archived: false };
+export function addAccount(state, { bankName, name, openingBalance }) {
+  const selectedBank = (bankName ?? name ?? '').trim();
+  label(selectedBank, '은행 이름', 24);
+  const account = { id: uid(), bankName: selectedBank, name: selectedBank, openingBalance: money(openingBalance, '잔액', true), archived: false };
   state.accounts.push(account);
   if (!state.settings.primaryAccountId) state.settings.primaryAccountId = account.id;
   return account;
 }
-export function adjustAccount(state, id, name, targetBalance, date = todayString()) {
+export function adjustAccount(state, id, bankName, targetBalance, date = todayString()) {
   const account = state.accounts.find(item => item.id === id);
   requireValue(account, '계좌를 찾을 수 없습니다.');
   const difference = money(targetBalance, '잔액', true) - balance(state, id);
-  account.name = name.trim();
+  label(bankName.trim(), '은행 이름', 24);
+  account.bankName = bankName.trim();
+  account.name = account.bankName;
   if (difference) state.transactions.push({ id: uid(), type: 'adjustment', accountId: id, date, amount: difference, name: '잔액 직접 조정', category: '잔액 조정', mood: '', fixedOccurrenceId: null });
 }
 export function archiveAccount(state, id) {

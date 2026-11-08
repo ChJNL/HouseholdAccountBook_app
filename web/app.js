@@ -1,6 +1,7 @@
 import { CATEGORIES, MOODS, MAX_MONEY, todayString, monthOf, daysInMonth, shiftMonth, createState, balance, goalFor, fixedFor, summarize, addAccount, adjustAccount, archiveAccount, saveTransaction, addFixedExpense, stopFixedExpense, payFixedExpense, ensureMonth, isMonth } from './core.js';
 import { STORAGE_KEY, createStore, parseBackup } from './storage.js';
 import { owns } from './compat.js';
+import { renderUsageGuide } from './help.js';
 
 const $ = selector => document.querySelector(selector);
 const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -16,9 +17,10 @@ const routes = {
   entry: ['돈 쓰기 / 벌기', '차곡차곡 쌓이는 기록', '오늘의 수입과 지출을 가볍게 남겨 보세요.'],
   history: ['내역 보기', '한눈에 돌아보는 나의 소비', '기록을 살펴보고 나에게 맞는 소비 습관을 찾아보세요.'],
   analytics: ['지출 분석', '숫자로 알아보는 나의 습관', '지난달과 비교하고, 자주 쓰는 곳을 확인해 보세요.'],
-  accounts: ['내 계좌 모음', '흩어진 자산을 한곳에', '금융 연동 없이 내가 직접 관리하는 계좌'],
+  accounts: ['내 계좌 모음', '흩어진 자산을 한곳에', '은행 이름과 잔액으로 등록하는 나의 계좌'],
   fixed: ['고정비 스케줄러', '미리 준비하는 여유', '매달 나가는 돈을 기억하고 남은 예산을 관리하세요.'],
   settings: ['설정 및 데이터 관리', '나에게 맞는 가계부', '목표를 정하고 이 기기에 기록을 쌓아 보세요.'],
+  help: ['사용법', '처음 만나는 차곡', '은행 등록부터 지출 분석까지, 한 단계씩 시작해 보세요.'],
 };
 let store;
 let selectedMonth = monthOf(todayString());
@@ -32,10 +34,16 @@ let lastDate = todayString();
 let modalReturnFocus = null;
 
 function activeAccounts(includeId = null) { return store.state.accounts.filter(item => !item.archived || item.id === includeId); }
-function accountName(id) { return store.state.accounts.find(item => item.id === id)?.name || '알 수 없는 계좌'; }
+function accountName(id) {
+  const account = store.state.accounts.find(item => item.id === id);
+  if (!account) return '알 수 없는 은행';
+  const name = account.bankName || account.name;
+  const sameBank = store.state.accounts.filter(item => (item.bankName || item.name) === name);
+  return sameBank.length > 1 ? `${name} · ${sameBank.findIndex(item => item.id === id) + 1}번` : name;
+}
 function options(values, selected) { return values.map(value => `<option value="${escape(value)}" ${value === selected ? 'selected' : ''}>${escape(value)}</option>`).join(''); }
-function accountOptions(selected, includeId) { return activeAccounts(includeId).map(item => `<option value="${escape(item.id)}" ${item.id === selected ? 'selected' : ''}>${escape(item.name)}${item.archived ? ' (보관)' : ''}</option>`).join(''); }
-function button(action, text, style = 'primary', id = '', extra = '') { return `<button class="button ${style}" data-action="${action}" ${id ? `data-id="${escape(id)}"` : ''} ${extra}>${text}</button>`; }
+function accountOptions(selected, includeId) { return activeAccounts(includeId).map(item => `<option value="${escape(item.id)}" ${item.id === selected ? 'selected' : ''}>${escape(accountName(item.id))}${item.archived ? ' (보관)' : ''}</option>`).join(''); }
+function button(action, text, style = 'primary', id = '', extra = '') { return `<button type="button" class="button ${style}" data-action="${action}" ${id ? `data-id="${escape(id)}"` : ''} ${extra}>${text}</button>`; }
 function empty(title, message, action = '', actionText = '') { return `<div class="empty"><div class="icon-bubble">${icon('leaf')}</div><h3>${title}</h3><p>${message}</p>${action ? button(action, actionText, 'ghost') : ''}</div>`; }
 function progress(value, red = false) { const pct = Number.isFinite(value) ? Math.min(100, Math.max(0, value * 100)) : 0; return `<div class="progress ${red ? 'red' : ''}" aria-hidden="true"><span style="--progress:${pct}%"></span></div>`; }
 function stat(label, value, caption, symbol, className = '') { return `<article class="card stat-card"><div class="stat-top"><span class="card-label">${label}</span><div class="icon-bubble">${icon(symbol)}</div></div><div class="stat-value ${className}">${value}</div><p class="stat-caption">${caption}</p></article>`; }
@@ -99,9 +107,9 @@ function render() {
   document.title = `${title} · ${store.state.settings.bookName} · 차곡`;
   $('#month-picker').value = selectedMonth;
   $('#month-picker').max = monthOf(todayString());
-  $('#month-picker').closest('label').hidden = route === 'accounts';
+  $('#month-picker').closest('label').hidden = route === 'accounts' || route === 'help';
   document.querySelectorAll('#navigation a').forEach(link => { const active = link.dataset.route === route; link.classList.toggle('active', active); if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
-  const renderers = { dashboard: renderDashboard, entry: renderEntry, history: renderHistory, analytics: renderAnalytics, accounts: renderAccounts, fixed: renderFixed, settings: renderSettings };
+  const renderers = { dashboard: renderDashboard, entry: renderEntry, history: renderHistory, analytics: renderAnalytics, accounts: renderAccounts, fixed: renderFixed, settings: renderSettings, help: renderUsageGuide };
   const renderScreen = renderers[route];
   if (typeof renderScreen !== 'function') throw new Error('선택한 메뉴에 연결된 화면이 없습니다.');
   $('#view').innerHTML = renderScreen();
@@ -114,11 +122,12 @@ function render() {
 function renderDashboard() {
   const state = store.state, data = summarize(state, selectedMonth);
   const current = selectedMonth === monthOf(todayString());
-  const primary = state.accounts.find(item => item.id === state.settings.primaryAccountId && !item.archived);
+  const primaryAccount = state.accounts.find(item => item.id === state.settings.primaryAccountId && !item.archived);
+  const primary = primaryAccount ? { ...primaryAccount, name: accountName(primaryAccount.id) } : null;
   const recent = [...data.expenses].sort((a, b) => b.date.localeCompare(a.date) || state.transactions.indexOf(b) - state.transactions.indexOf(a)).slice(0, 3);
   const budgetSet = data.goal.income > 0;
   let guide = '';
-  if (!activeAccounts().length) guide = `<div class="setup-strip"><div><strong>첫 계좌를 등록하고 가볍게 시작하세요.</strong><p>통장 이름과 지금 잔액만 있으면 준비가 끝나요.</p></div>${button('add-account', `${icon('plus')} 계좌 등록`, 'secondary')}</div>`;
+  if (!activeAccounts().length) guide = `<div class="setup-strip"><div><strong>은행 이름으로 첫 계좌를 등록하세요.</strong><p>국민은행, 농협은행처럼 은행 이름과 잔액을 입력하면 됩니다.</p></div><div class="guide-actions">${button('help', '사용법 보기', 'secondary')}${button('add-account', `${icon('plus')} 계좌 등록`, 'primary')}</div></div>`;
   else if (!budgetSet) guide = `<div class="setup-strip"><div><strong>오늘 쓸 수 있는 예산이 궁금하다면?</strong><p>월 수입과 저축 목표를 설정해 주세요.</p></div>${button('settings', '목표 설정', 'secondary')}</div>`;
   const dailyTitle = current ? '오늘 남은 예산' : '이번 달 남은 변동비';
   const dailyValue = current ? data.todayRemaining : data.variableBudget - data.variableSpent;
@@ -194,9 +203,20 @@ function renderAccounts() {
   const assets = state.accounts.reduce((sum, account) => sum + balance(state, account.id), 0);
   function accountCard(account) {
     const primary = account.id === state.settings.primaryAccountId;
-    return `<article class="card account-card ${primary ? 'primary-account' : ''} ${account.archived ? 'archived' : ''}"><div class="account-card-top"><div class="icon-bubble">${icon('wallet')}</div>${primary ? '<span class="tag">대표 계좌</span>' : account.archived ? '<span class="tag muted">보관 중</span>' : ''}</div><h2>${escape(account.name)}</h2><div class="account-balance">${number(balance(state, account.id))}<small>원</small></div><p class="account-hint">${account.archived ? '보관한 계좌도 총 자산에 포함됩니다.' : '기록한 거래를 반영한 잔액'}</p><div class="account-card-actions">${account.archived ? button('restore-account', '계좌 복원', 'secondary small', account.id) : `<button class="text-button" data-action="edit-account" data-id="${escape(account.id)}">잔액·이름 수정</button>${!primary ? `<button class="text-button" data-action="primary-account" data-id="${escape(account.id)}">대표 지정</button>` : ''}<button class="text-button" data-action="archive-account" data-id="${escape(account.id)}">보관</button>`}</div></article>`;
+    return `<article class="card account-card ${primary ? 'primary-account' : ''} ${account.archived ? 'archived' : ''}">
+      <div class="account-card-top"><div class="icon-bubble">${icon('wallet')}</div>${primary ? '<span class="tag">대표 계좌</span>' : account.archived ? '<span class="tag muted">보관 중</span>' : ''}</div>
+      <h2>${escape(accountName(account.id))}</h2>
+      ${!account.bankName ? '<span class="tag warning">은행 이름을 입력해 주세요</span>' : ''}
+      <div class="account-balance">${number(balance(state, account.id))}<small>원</small></div>
+      <p class="account-hint">${account.archived ? '보관한 계좌도 총 자산에 포함됩니다.' : '이 은행에 등록한 계좌의 현재 잔액'}</p>
+      <div class="account-card-actions">${account.archived ? button('restore-account', '계좌 복원', 'secondary small', account.id) : `<button type="button" class="text-button" data-action="edit-account" data-id="${escape(account.id)}">은행·잔액 수정</button>${!primary ? `<button type="button" class="text-button" data-action="primary-account" data-id="${escape(account.id)}">대표 지정</button>` : ''}<button type="button" class="text-button" data-action="archive-account" data-id="${escape(account.id)}">보관</button>`}</div>
+    </article>`;
   }
-  return `<article class="card account-summary"><div><span class="card-label">내가 가진 총 자산</span><p>사용 중 ${state.accounts.filter(item => !item.archived).length}개 · 보관 ${state.accounts.filter(item => item.archived).length}개 계좌</p></div><strong>${won(assets)}</strong></article><div class="grid accounts-grid">${state.accounts.filter(item => !item.archived).map(accountCard).join('')}<button class="add-account-card" data-action="add-account">${icon('plus')}<strong>새로운 계좌 등록</strong><small>통장 이름과 잔액만 입력하세요.</small></button></div>${state.accounts.some(item => item.archived) ? `<h2 class="archived-heading">보관한 계좌 <span class="tag muted">기록 유지</span></h2><div class="grid accounts-grid">${state.accounts.filter(item => item.archived).map(accountCard).join('')}</div>` : ''}<p class="data-note">계좌 잔액을 직접 수정하면 조정 기록을 남깁니다. 조정 금액은 수입·지출 통계에 포함하지 않습니다.</p>`;
+  const intro = !state.accounts.length ? `<div class="setup-strip"><div><strong>처음 사용하시나요?</strong><p>은행 이름을 등록하고 오늘의 소비를 기록하는 방법을 안내해 드려요.</p></div>${button('help', '사용법 보기', 'secondary')}</div>` : '';
+  return `${intro}<article class="card account-summary"><div><span class="card-label">내가 가진 총 자산</span><p>사용 중 ${state.accounts.filter(item => !item.archived).length}개 · 보관 ${state.accounts.filter(item => item.archived).length}개 계좌</p></div><strong>${won(assets)}</strong></article>
+    <div class="grid accounts-grid">${state.accounts.filter(item => !item.archived).map(accountCard).join('')}<button type="button" class="add-account-card" data-action="add-account">${icon('plus')}<strong>은행 이름으로 계좌 등록</strong><small>국민은행, 농협은행처럼 입력하세요.</small></button></div>
+    ${state.accounts.some(item => item.archived) ? `<h2 class="archived-heading">보관한 계좌 <span class="tag muted">기록 유지</span></h2><div class="grid accounts-grid">${state.accounts.filter(item => item.archived).map(accountCard).join('')}</div>` : ''}
+    <p class="data-note">같은 은행을 여러 번 등록하면 번호로 구분합니다. 잔액을 직접 수정하면 조정 기록을 남기며 수입·지출에는 포함하지 않습니다.</p>`;
 }
 
 function renderFixed() {
@@ -227,9 +247,10 @@ function bindSettings() {
 
 function editAccount(id = null) {
   const account = store.state.accounts.find(item => item.id === id);
-  showModal(account ? '계좌 이름·잔액 수정' : '새로운 계좌 등록', `<div class="form-grid">${inputField('name', '계좌 이름', account?.name || '', 'text', 'maxlength="24" placeholder="예: 생활비 통장"')}${inputField('amount', account ? '현재 잔액' : '시작 잔액', account ? balance(store.state, id) : '', 'number', `min="-${MAX_MONEY}" max="${MAX_MONEY}" step="1" inputmode="decimal"`)}</div><p class="data-note">${account ? '차액은 잔액 조정 기록으로 남기며 수입·지출에 포함하지 않습니다.' : '실제 계좌번호나 비밀번호는 입력하지 마세요.'}</p>`, form => {
+  const previousName = account && !account.bankName ? `<p class="data-note">기존 등록 이름: ${escape(account.name)}. 은행 이름을 새로 입력해 주세요.</p>` : '';
+  showModal(account ? '은행 이름·잔액 수정' : '은행 이름으로 계좌 등록', `<p class="inline-notice">어떤 은행의 계좌인가요? 사용 목적 대신 은행 이름을 입력해 주세요.</p><div class="form-grid">${inputField('bankName', '은행 이름', account?.bankName || '', 'text', 'maxlength="24" placeholder="예: 국민은행, 농협은행, 카카오뱅크"', '같은 은행의 계좌도 여러 개 등록할 수 있어요.')}${inputField('amount', account ? '현재 잔액' : '현재 계좌 잔액', account ? balance(store.state, id) : '', 'number', `min="-${MAX_MONEY}" max="${MAX_MONEY}" step="1" inputmode="decimal"`)}</div>${previousName}<p class="data-note">${account ? '차액은 잔액 조정 기록으로 남기며 수입·지출에 포함하지 않습니다.' : '실제 계좌번호나 비밀번호는 입력하지 마세요.'}</p>`, form => {
     const values = Object.fromEntries(new FormData(form));
-    mutate(state => account ? adjustAccount(state, id, values.name, Number(values.amount)) : addAccount(state, { name: values.name, openingBalance: Number(values.amount) }), account ? '계좌 정보를 수정했어요.' : '새 계좌를 등록했어요.');
+    mutate(state => account ? adjustAccount(state, id, values.bankName, Number(values.amount)) : addAccount(state, { bankName: values.bankName, openingBalance: Number(values.amount) }), account ? '은행 이름과 잔액을 수정했어요.' : '은행 이름으로 계좌를 등록했어요.');
   });
 }
 function editTransaction(id) {
@@ -252,6 +273,7 @@ function downloadText(text, filename) {
 function exportBackup() { downloadText(store.export(), `차곡-백업-${todayString()}.json`); notify('백업 파일 저장을 요청했어요. 저장된 파일을 확인해 주세요.'); }
 
 const actions = {
+  'help': () => setRoute('help'),
   'entry': () => setRoute('entry'),
   'settings': () => setRoute('settings'),
   'add-account': () => editAccount(),
