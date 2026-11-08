@@ -4,6 +4,8 @@
 
 [원본 기획서](https://app.notion.com/p/3fdf445d30e38049a01ed95b5e047551) · [개발 기준](docs/DEVELOPMENT.md) · [수동 확인 안내](docs/MANUAL_REVIEW.md)
 
+GitHub Copilot으로 작업을 이어갈 때는 [작업 인수인계 문서](docs/COPILOT_HANDOFF.md)를 먼저 읽습니다. 현재 상태, 수동 검증 방침, 빌드·APK 위치, 무선 설치와 GitHub 배포 후속 계획, 붙여 넣을 요청문을 포함합니다.
+
 현재 작업에서 생성한 파일은 로컬 `artifacts/` 폴더에 있습니다. 최신 골드 버전은 `chagok-preview-1.0.1-gold.apk`이며 기존 미리보기 앱 위에 업데이트하여 설치합니다. 정식 서명 전 파일은 `chagok-release-1.0.1-gold-unsigned.apk`입니다. `chagok-web-1.0.1-gold.zip`에는 웹 배포용 `dist/` 폴더가 들어 있습니다. 생성 파일은 Git에서 제외하며 코드를 수정한 뒤에는 다시 빌드해야 합니다.
 
 ## 시작하기
