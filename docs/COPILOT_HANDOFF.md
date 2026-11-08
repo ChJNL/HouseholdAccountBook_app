@@ -2,7 +2,13 @@
 
 작성일: 2026-11-08
 
-### 최신 변경: 1.0.2
+### 최신 변경: 1.0.3
+
+사용자가 각 화면에서 `intermediate value ... is not a function` 오류를 보고했다. 코드에서 화면 렌더링 함수 목록 객체 자체를 호출하는 잘못된 구현을 확인했다. 원인은 백업 처리가 아니었다. `renderers[route]`로 해당 화면 함수를 선택하고 함수 여부를 확인한 다음 호출하도록 수정했다.
+
+현재 버전은 `1.0.3`, Android 버전 코드는 4이며 설치 파일은 `chagok-v1.0.3.apk`다. 저장 키 `household-book:fresh:v1`은 유지한다. 자동 테스트와 기기 검증은 실행하지 않으며 빌드 결과와 사용자 실기기 확인을 구분한다. 아래 이전 버전 설명은 수정 이력이다.
+
+### 이전 변경: 1.0.2
 
 사용자가 1.0.1을 설치한 뒤 색상과 버튼 동작은 수정되었다고 보고했다. 각 메뉴의 기능에는 문제가 남아 있어, 백업·복구 없이 새 가계부로 시작하는 변경을 승인했다. 아래의 1.0.1 기록은 이력이며 현재 정책은 다음 항목을 우선한다.
 
@@ -44,8 +50,8 @@
 | 로컬 작업 폴더 | `C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app` |
 | 작성 시 브랜치 | `main` |
 | 문서 작성 전 기준 커밋 | `8d66507` / `Update 1.0.1` |
-| 웹 패키지 버전 | `1.0.2` |
-| Android 버전 | `versionName = 1.0.2`, `versionCode = 3` |
+| 웹 패키지 버전 | `1.0.3` |
+| Android 버전 | `versionName = 1.0.3`, `versionCode = 4` |
 | 미리보기 앱 ID | `io.chagok.accountbook.dev` |
 | 정식 앱 ID | `io.chagok.accountbook` |
 | 사용자 확인 기기 | 레노버 태블릿. 정확한 모델·Android·WebView 버전은 확인되지 않았다. |
@@ -169,14 +175,14 @@ OneDrive 경로에서 Kotlin 빌드 캐시 파일 잠금 오류가 있었다. �
 
 | 파일 | 용도 |
 | --- | --- |
-| `chagok-preview-1.0.2-fresh.apk` | 새 가계부로 시작하는 설치용 미리보기 APK. |
-| `chagok-release-1.0.2-fresh-unsigned.apk` | 정식 서명 전 릴리스 APK. |
-| `chagok-web-1.0.2-fresh.zip` | `dist/` 폴더를 포함한 웹 배포 압축 파일. |
+| `chagok-v1.0.3.apk` | 화면 호출 오류를 수정한 설치용 미리보기 APK. |
+| `chagok-release-1.0.3-unsigned.apk` | 정식 서명 전 릴리스 APK. |
+| `chagok-web-1.0.3.zip` | `dist/` 폴더를 포함한 웹 배포 압축 파일. |
 
 설치용 APK의 전체 경로는 다음과 같다.
 
 ```text
-C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app\artifacts\chagok-preview-1.0.2-fresh.apk
+C:\Users\skjam\OneDrive\Desktop\HouseholdAccountBook_app\artifacts\chagok-v1.0.3.apk
 ```
 
 `chagok-preview.apk`, `chagok-release-unsigned.apk`, `chagok-web.zip` 이름의 사본도 최신 생성 파일로 갱신했다.

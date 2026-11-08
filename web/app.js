@@ -101,7 +101,10 @@ function render() {
   $('#month-picker').max = monthOf(todayString());
   $('#month-picker').closest('label').hidden = route === 'accounts';
   document.querySelectorAll('#navigation a').forEach(link => { const active = link.dataset.route === route; link.classList.toggle('active', active); if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
-  $('#view').innerHTML = ({ dashboard: renderDashboard, entry: renderEntry, history: renderHistory, analytics: renderAnalytics, accounts: renderAccounts, fixed: renderFixed, settings: renderSettings })();
+  const renderers = { dashboard: renderDashboard, entry: renderEntry, history: renderHistory, analytics: renderAnalytics, accounts: renderAccounts, fixed: renderFixed, settings: renderSettings };
+  const renderScreen = renderers[route];
+  if (typeof renderScreen !== 'function') throw new Error('선택한 메뉴에 연결된 화면이 없습니다.');
+  $('#view').innerHTML = renderScreen();
   $('#save-status').textContent = store.state.revision ? `마지막 저장 ${new Date(store.state.updatedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '아직 저장된 기록이 없습니다';
   if (route === 'entry') bindEntryForm();
   if (route === 'history') bindHistoryFilters();

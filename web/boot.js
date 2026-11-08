@@ -26,6 +26,6 @@
   });
   document.addEventListener('DOMContentLoaded', function () { if (problem) showProblem(problem); });
   window.setTimeout(function () {
-    if (!started && !problem) showProblem('실행 파일이 시작되지 않았습니다. 앱 버전 1.0.2 이상의 APK를 설치해 주세요.');
+    if (!started && !problem) showProblem('실행 파일이 시작되지 않았습니다. 앱 버전 1.0.3 이상의 APK를 설치해 주세요.');
   }, 8000);
 }());
